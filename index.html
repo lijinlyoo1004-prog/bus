@@ -566,25 +566,51 @@ async function locateMyBus() {
     const res = await fetch(`${PROXY_URL}?action=location&routeId=${encodeURIComponent(routeId)}`);
     const data = await res.json();
     const items = data?.response?.msgBody?.busLocationList;
-    const buses = Array.isArray(items) ? items : (items ? [items] : []);
+    let buses = Array.isArray(items) ? items : (items ? [items] : []);
 
     if (!buses.length) {
       resultEl.innerHTML = '<div class="empty">현재 운행 중인 버스가 없습니다</div>';
       return;
     }
 
+    // 왕복 노선은 같은 routeId 안에 가는 방향/오는 방향이 섞여 있어서,
+    // 지금 보고 있는 정류장(currentStationId)을 향해 오고 있는 버스만 걸러냅니다.
+    const targetEntry = stations.find(s => Number(s.stationId) === Number(currentStationId));
+    let directionNote = '';
+    if (targetEntry) {
+      const targetSeq = Number(targetEntry.stationSeq);
+      const before = buses.filter(b => {
+        const seq = Number(b.stationSeq);
+        return seq <= targetSeq && (targetSeq - seq) <= 25; // 정류장 도착 전, 너무 먼(반대방향 등) 버스는 제외
+      });
+      if (before.length) {
+        buses = before.sort((a, b) => Number(b.stationSeq) - Number(a.stationSeq)); // 가까운 순
+      } else {
+        buses = [];
+        directionNote = '<div class="empty">이 정류소로 오고 있는 버스가 없습니다 (반대 방향이거나 이미 지나갔을 수 있어요)</div>';
+      }
+    }
+
+    if (!buses.length) {
+      resultEl.innerHTML = directionNote || '<div class="empty">현재 운행 중인 버스가 없습니다</div>';
+      return;
+    }
+
     const card = document.createElement('div');
     card.className = 'locate-card';
+    const targetSeqNum = targetEntry ? Number(targetEntry.stationSeq) : null;
     buses.forEach(bus => {
       const station = stations.find(s => Number(s.stationSeq) === Number(bus.stationSeq));
       const stationName = station ? station.stationName : `정류소 순번 ${bus.stationSeq}`;
       const stateText = STATE_LABEL[bus.stateCd] ?? '-';
       const crowdText = CROWD_LABEL[String(bus.crowded)] ?? '';
+      const stopsLeft = targetSeqNum != null ? (targetSeqNum - Number(bus.stationSeq)) : null;
+      const stopsLeftText = stopsLeft != null ? (stopsLeft === 0 ? '이 정류소' : `${stopsLeft}정거장 전`) : '';
 
       const row = document.createElement('div');
       row.className = 'locate-bus-row';
       row.innerHTML = `
-        <span>${stationName} <span class="plate">${bus.plateNo ?? ''}</span></span>
+        <span>${stationName} <span class="plate">${bus.plateNo ?? ''}${stopsLeftText ? ' · ' + stopsLeftText : ''}</span></span>
         <span class="locate-state">${stateText}${crowdText ? ' · ' + crowdText : ''}</span>
       `;
       card.appendChild(row);
