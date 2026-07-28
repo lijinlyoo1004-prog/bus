@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>엄마 버스 언제와</title>
+<style>
+  :root{
+    --bg: #ffffff;
+    --panel: #f3f4f0;
+    --ink: #14171c;
+    --ink-dim: #52564f;
+    --accent: #c2410c;
+    --accent-bg: #fff1e6;
+    --green: #15803d;
+    --green-bg: #ecfdf3;
+    --red: #dc2626;
+    --border: #d8dbd2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 22px; }
+  header .badge {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--ink-dim);
+    border: 1.5px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+  header h1 {
+    font-size: 30px;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.5px;
+    color: var(--ink);
+  }
+
+  .search-box {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  input[type="text"] {
+    flex: 1;
+    background: #ffffff;
+    border: 2px solid var(--border);
+    color: var(--ink);
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 600;
+    border-radius: 8px;
+    outline: none;
+  }
+  input[type="text"]:focus { border-color: var(--accent); }
+  input[type="text"]::placeholder { color: #9a9d94; font-weight: 400; }
+
+  button {
+    background: var(--accent);
+    color: #ffffff;
+    border: none;
+    padding: 14px 20px;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:active { transform: translateY(1px); }
+
+  .section-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink-dim);
+    letter-spacing: 0.5px;
+    margin: 4px 2px 8px;
+  }
+
+  .stop-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px; }
+  .stop-item {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .stop-item:hover { border-color: var(--accent); }
+  .stop-item .name { color: var(--ink); font-size: 17px; font-weight: 700; flex: 1; cursor: pointer; }
+  .stop-item .no { color: var(--ink-dim); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .stop-item .star-btn { font-size: 22px; cursor: pointer; padding: 0 2px; line-height: 1; }
+
+  .favorite-item .remove-fav {
+    color: var(--ink-dim);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0 6px;
+  }
+  .favorite-item .remove-fav:hover { color: var(--red); }
+  .favorite-item.disabled { opacity: 0.55; }
+  .favorite-item.disabled .name { cursor: default; }
+  .route-tag {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    background: var(--accent-bg);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+  }
+
+  .my-bus-box {
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .my-bus-box label { font-size: 14px; font-weight: 700; color: var(--ink-dim); white-space: nowrap; }
+  .my-bus-box input { padding: 10px 12px; font-size: 16px; }
+
+  .board {
+    background: #ffffff;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+  }
+  .board-header {
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .board-header .stop-name { font-size: 18px; font-weight: 800; }
+  .board-header .refresh-tag { font-size: 12px; font-weight: 600; color: var(--ink-dim); }
+
+  .bus-row {
+    display: grid;
+    grid-template-columns: 70px 1fr auto;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1.5px solid var(--border);
+  }
+  .bus-row:last-child { border-bottom: none; }
+  .bus-row.pinned {
+    background: var(--accent-bg);
+    border-left: 5px solid var(--accent);
+  }
+  .route-no {
+    font-weight: 800;
+    font-size: 18px;
+    text-align: center;
+    padding: 6px 0;
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+  }
+  .route-info { font-size: 13px; font-weight: 600; color: var(--ink-dim); }
+  .eta {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 800;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--ink);
+    min-width: 56px;
+  }
+  .eta .unit { font-size: 12px; margin-left: 2px; font-weight: 700; }
+  .eta.soon { color: #ffffff; background: var(--red); }
+  .eta.mid { color: #ffffff; background: var(--green); }
+
+  .empty, .loading, .error {
+    text-align: center;
+    padding: 30px 10px;
+    color: var(--ink-dim);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .error { color: var(--red); }
+
+  .back-link {
+    display: inline-block;
+    margin-bottom: 14px;
+    color: var(--ink-dim);
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  footer {
+    text-align: center;
+    color: #9a9d94;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 24px;
+  }
+
+  .locate-box { margin-top: 14px; }
+  .locate-btn {
+    width: 100%;
+    background: #ffffff;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    padding: 13px;
+    font-size: 15px;
+  }
+  .locate-btn:hover { background: var(--accent-bg); }
+
+  .locate-card {
+    margin-top: 10px;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .locate-bus-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1.5px solid var(--border);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .locate-bus-row:last-child { border-bottom: none; }
+  .locate-bus-row .plate { color: var(--ink-dim); font-size: 12px; font-weight: 600; }
+  .locate-state {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--accent-bg);
+    color: var(--accent);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="badge">GYEONGGI BUS INFO</div>
+    <h1>엄마 버스 언제와</h1>
+  </header>
+
+  <div id="searchView">
+    <div id="favoriteSection" style="display:none;">
+      <div class="section-label">즐겨찾는 정류장</div>
+      <div id="favoriteList" class="stop-list"></div>
+    </div>
+
+    <div class="section-label" id="searchLabel" style="display:none;">검색 결과</div>
+    <div class="search-box">
+      <input type="text" id="keyword" placeholder="정류소 이름 또는 번호 (예: 시청, 32-123)">
+      <button onclick="searchStops()">검색</button>
+    </div>
+    <div id="stopList" class="stop-list"></div>
+  </div>
+
+  <div id="boardView" style="display:none;">
+    <div class="back-link" onclick="backToSearch()">&larr; 다른 정류소 검색</div>
+
+    <div class="my-bus-box">
+      <label>내가 기다리는 버스</label>
+      <input type="text" id="myBusNo" placeholder="예: 720-2" oninput="renderBoard()">
+    </div>
+
+    <div class="board">
+      <div class="board-header">
+        <span class="stop-name" id="boardStopName">-</span>
+        <span class="refresh-tag" id="refreshTag">-</span>
+      </div>
+      <div id="boardBody"><div class="loading">불러오는 중...</div></div>
+    </div>
+
+    <div class="locate-box">
+      <button class="locate-btn" onclick="locateMyBus()">📍 내 버스 지금 어디쯤 왔나 보기</button>
+      <div id="locateResult"></div>
+    </div>
+  </div>
+
+  <footer>도착예정시간은 예측 정보이며 실제와 다를 수 있습니다</footer>
+</div>
+
+<script>
+// Cloudflare Worker 배포 후 받은 주소로 교체하세요 (예: https://gyeonggi-bus-proxy.내계정.workers.dev)
+const PROXY_URL = 'https://YOUR-WORKER-NAME.YOUR-SUBDOMAIN.workers.dev';
+
+let currentStationId = null;
+let currentStationName = '';
+let refreshTimer = null;
+let latestBuses = [];
+
+// ============================================
+// 고정 정류장 - stationId는 검색 API 결과에서 확인 후 채워넣으세요
+// (?action=search&keyword=정류장번호 로 조회한 JSON의 stationId 값)
+// ============================================
+const PRESET_STOPS = [
+  { name: '갈매협동마을(산마루초방향)', stationId: '221000370', myRoute: '2-2' },
+  { name: '갈매협동마을(성은교회앞)', stationId: '221000371', myRoute: '2-2' },
+  { name: '갈매역아이파크(모다앞)', stationId: '221000125', myRoute: '707' },
+];
+
+function getSavedFavorites() {
+  try {
+    return JSON.parse(localStorage.getItem('busFavorites') || '[]');
+  } catch { return []; }
+}
+function saveFavorites(list) {
+  localStorage.setItem('busFavorites', JSON.stringify(list));
+}
+function isFavorite(stationId) {
+  return getSavedFavorites().some(s => s.stationId === stationId);
+}
+function toggleFavorite(stationId, stationName) {
+  let favs = getSavedFavorites();
+  if (isFavorite(stationId)) {
+    favs = favs.filter(s => s.stationId !== stationId);
+  } else {
+    favs.push({ stationId, name: stationName });
+  }
+  saveFavorites(favs);
+  renderFavorites();
+  renderStopList(lastSearchResults); // 별표 상태 갱신
+}
+
+let lastSearchResults = [];
+
+function renderFavorites() {
+  const el = document.getElementById('favoriteList');
+  const favs = getSavedFavorites();
+  const all = [...PRESET_STOPS.map(s => ({...s, preset: true})), ...favs.map(s => ({...s, preset: false}))];
+
+  if (!all.length) {
+    el.innerHTML = '';
+    document.getElementById('favoriteSection').style.display = 'none';
+    return;
+  }
+  document.getElementById('favoriteSection').style.display = 'block';
+  el.innerHTML = '';
+  all.forEach(stop => {
+    const needsId = stop.preset && !stop.stationId;
+    const div = document.createElement('div');
+    div.className = 'stop-item favorite-item' + (needsId ? ' disabled' : '');
+    div.innerHTML = `
+      <span class="name">${stop.preset ? '📌 ' : '⭐ '}${stop.name}${stop.myRoute ? ' <span class="route-tag">' + stop.myRoute + '번</span>' : ''}</span>
+      ${needsId ? '<span class="no">ID 필요</span>' : ''}
+      ${stop.preset ? '' : '<span class="remove-fav">✕</span>'}
+    `;
+    if (!needsId) {
+      div.querySelector('.name').onclick = () => selectStop(stop.stationId, stop.name, stop.myRoute);
+    }
+    const removeBtn = div.querySelector('.remove-fav');
+    if (removeBtn) {
+      removeBtn.onclick = (e) => {
+        e.stopPropagation();
+        toggleFavorite(stop.stationId, stop.name);
+      };
+    }
+    el.appendChild(div);
+  });
+}
+
+async function searchStops() {
+  const keyword = document.getElementById('keyword').value.trim();
+  const listEl = document.getElementById('stopList');
+  if (!keyword) return;
+
+  listEl.innerHTML = '<div class="loading">검색 중...</div>';
+
+  try {
+    const res = await fetch(`${PROXY_URL}?action=search&keyword=${encodeURIComponent(keyword)}`);
+    const data = await res.json();
+
+    const items = data?.response?.msgBody?.busStationList;
+    const list = Array.isArray(items) ? items : (items ? [items] : []);
+    lastSearchResults = list;
+    renderStopList(list);
+  } catch (e) {
+    listEl.innerHTML = `<div class="error">오류: ${e.message}</div>`;
+  }
+}
+
+function renderStopList(list) {
+  const listEl = document.getElementById('stopList');
+  if (!list.length) {
+    listEl.innerHTML = '<div class="empty">검색 결과가 없습니다</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  list.forEach(stop => {
+    const fav = isFavorite(stop.stationId);
+    const div = document.createElement('div');
+    div.className = 'stop-item';
+    div.innerHTML = `
+      <span class="name">${stop.stationName ?? ''}</span>
+      <span class="no">${stop.mobileNo ?? stop.stationId ?? ''}</span>
+      <span class="star-btn ${fav ? 'active' : ''}">${fav ? '⭐' : '☆'}</span>
+    `;
+    div.querySelector('.name').onclick = () => selectStop(stop.stationId, stop.stationName);
+    div.querySelector('.no').onclick = () => selectStop(stop.stationId, stop.stationName);
+    div.querySelector('.star-btn').onclick = (e) => {
+      e.stopPropagation();
+      toggleFavorite(stop.stationId, stop.stationName);
+    };
+    listEl.appendChild(div);
+  });
+}
+
+function selectStop(stationId, stationName, myRoute) {
+  currentStationId = stationId;
+  currentStationName = stationName;
+  document.getElementById('searchView').style.display = 'none';
+  document.getElementById('boardView').style.display = 'block';
+  document.getElementById('boardStopName').textContent = stationName;
+  document.getElementById('myBusNo').value = myRoute || '';
+  document.getElementById('locateResult').innerHTML = '';
+  loadArrivals();
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(loadArrivals, 15000); // 15초마다 자동 갱신
+}
+
+function backToSearch() {
+  if (refreshTimer) clearInterval(refreshTimer);
+  document.getElementById('boardView').style.display = 'none';
+  document.getElementById('searchView').style.display = 'block';
+}
+
+async function loadArrivals() {
+  const bodyEl = document.getElementById('boardBody');
+  try {
+    const res = await fetch(`${PROXY_URL}?action=arrivals&stationId=${encodeURIComponent(currentStationId)}`);
+    const data = await res.json();
+
+    const items = data?.response?.msgBody?.busArrivalList;
+    latestBuses = Array.isArray(items) ? items : (items ? [items] : []);
+
+    document.getElementById('refreshTag').textContent =
+      '갱신 ' + new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+    renderBoard();
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="error">오류: ${e.message}</div>`;
+  }
+}
+
+function renderBoard() {
+  const bodyEl = document.getElementById('boardBody');
+  const myBus = document.getElementById('myBusNo').value.trim();
+
+  if (!latestBuses.length) {
+    bodyEl.innerHTML = '<div class="empty">현재 도착 예정인 버스가 없습니다</div>';
+    return;
+  }
+
+  // 내가 지정한 버스를 맨 위로 정렬
+  const sorted = [...latestBuses].sort((a, b) => {
+    const aMatch = myBus && a.routeName === myBus;
+    const bMatch = myBus && b.routeName === myBus;
+    if (aMatch && !bMatch) return -1;
+    if (!aMatch && bMatch) return 1;
+    return (a.predictTime1 ?? 999) - (b.predictTime1 ?? 999);
+  });
+
+  bodyEl.innerHTML = '';
+  sorted.forEach(bus => {
+    const isPinned = myBus && bus.routeName === myBus;
+    const eta = bus.predictTime1;
+    const etaClass = eta == null ? '' : eta <= 3 ? 'soon' : eta <= 10 ? 'mid' : '';
+
+    const row = document.createElement('div');
+    row.className = 'bus-row' + (isPinned ? ' pinned' : '');
+    row.innerHTML = `
+      <div class="route-no">${bus.routeName ?? '-'}</div>
+      <div class="route-info">
+        ${bus.locationNo1 ? bus.locationNo1 + ' 전' : ''} ${bus.remainSeatCnt1 && bus.remainSeatCnt1 >= 0 ? '· 여유' : ''}
+      </div>
+      <div class="eta ${etaClass}">
+        ${eta != null ? eta : '-'}<span class="unit">분</span>
+      </div>
+    `;
+    bodyEl.appendChild(row);
+  });
+}
+
+document.getElementById('keyword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') searchStops();
+});
+
+renderFavorites();
+
+// ============================================
+// 실시간 버스 위치 (정류소 기준)
+// ============================================
+const routeIdCache = {
+  // 이미 확인된 노선 (같은 번호가 여러 지역에 있어서 헷갈리지 않도록 고정)
+  '2-2': '241339004', // 경기도 구리시, 구리역.롯데백화점 - 삼육대앞 (마을버스)
+  '707': '222000002', // 경기도 남양주/구리/서울, 진벌리차고지입구 - 청량리역환승센터 (일반형시내버스)
+};      // routeName -> routeId
+const routeStationCache = {}; // routeId -> [{stationSeq, stationName, ...}]
+
+const STATE_LABEL = { 0: '교차로 통과', 1: '정류소 도착', 2: '정류소 출발' };
+const CROWD_LABEL = { '1': '여유', '2': '보통', '3': '혼잡', '4': '매우혼잡' };
+
+async function locateMyBus() {
+  const routeName = document.getElementById('myBusNo').value.trim();
+  const resultEl = document.getElementById('locateResult');
+
+  if (!routeName) {
+    resultEl.innerHTML = '<div class="empty">먼저 "내가 기다리는 버스" 번호를 입력해주세요</div>';
+    return;
+  }
+
+  resultEl.innerHTML = '<div class="loading">위치 확인 중...</div>';
+
+  try {
+    // 1) routeId 찾기 (캐시 우선)
+    let routeId = routeIdCache[routeName];
+    if (!routeId) {
+      const res = await fetch(`${PROXY_URL}?action=routeSearch&keyword=${encodeURIComponent(routeName)}`);
+      const data = await res.json();
+      const items = data?.response?.msgBody?.busRouteList;
+      const list = Array.isArray(items) ? items : (items ? [items] : []);
+      const exact = list.find(r => r.routeName === routeName) || list[0];
+      if (!exact) {
+        resultEl.innerHTML = '<div class="empty">해당 노선번호를 찾지 못했습니다</div>';
+        return;
+      }
+      routeId = exact.routeId;
+      routeIdCache[routeName] = routeId;
+    }
+
+    // 2) 노선의 정류소 목록 (stationSeq -> stationName 매핑, 캐시 우선)
+    let stations = routeStationCache[routeId];
+    if (!stations) {
+      const res = await fetch(`${PROXY_URL}?action=routeStations&routeId=${encodeURIComponent(routeId)}`);
+      const data = await res.json();
+      const items = data?.response?.msgBody?.busRouteStationList;
+      stations = Array.isArray(items) ? items : (items ? [items] : []);
+      routeStationCache[routeId] = stations;
+    }
+
+    // 3) 실시간 위치 조회
+    const res = await fetch(`${PROXY_URL}?action=location&routeId=${encodeURIComponent(routeId)}`);
+    const data = await res.json();
+    const items = data?.response?.msgBody?.busLocationList;
+    const buses = Array.isArray(items) ? items : (items ? [items] : []);
+
+    if (!buses.length) {
+      resultEl.innerHTML = '<div class="empty">현재 운행 중인 버스가 없습니다</div>';
+      return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'locate-card';
+    buses.forEach(bus => {
+      const station = stations.find(s => Number(s.stationSeq) === Number(bus.stationSeq));
+      const stationName = station ? station.stationName : `정류소 순번 ${bus.stationSeq}`;
+      const stateText = STATE_LABEL[bus.stateCd] ?? '-';
+      const crowdText = CROWD_LABEL[String(bus.crowded)] ?? '';
+
+      const row = document.createElement('div');
+      row.className = 'locate-bus-row';
+      row.innerHTML = `
+        <span>${stationName} <span class="plate">${bus.plateNo ?? ''}</span></span>
+        <span class="locate-state">${stateText}${crowdText ? ' · ' + crowdText : ''}</span>
+      `;
+      card.appendChild(row);
+    });
+
+    resultEl.innerHTML = '';
+    resultEl.appendChild(card);
+
+  } catch (e) {
+    resultEl.innerHTML = `<div class="error">오류: ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
