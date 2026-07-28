@@ -155,8 +155,16 @@
     justify-content: space-between;
     align-items: center;
   }
-  .board-header .stop-name { font-size: 18px; font-weight: 800; }
+  .board-header .stop-name { font-size: 18px; font-weight: 800; flex: 1; }
   .board-header .refresh-tag { font-size: 12px; font-weight: 600; color: var(--ink-dim); }
+  .board-header .refresh-btn {
+    font-size: 20px;
+    cursor: pointer;
+    padding: 2px 4px;
+    margin-left: 4px;
+    line-height: 1;
+  }
+  .board-header .refresh-btn:active { transform: rotate(90deg); transition: transform 0.2s; }
 
   .bus-row {
     display: grid;
@@ -293,6 +301,7 @@
       <div class="board-header">
         <span class="stop-name" id="boardStopName">-</span>
         <span class="refresh-tag" id="refreshTag">-</span>
+        <span class="refresh-btn" onclick="loadArrivals()" title="새로고침">🔄</span>
       </div>
       <div id="boardBody"><div class="loading">불러오는 중...</div></div>
     </div>
@@ -439,18 +448,30 @@ function selectStop(stationId, stationName, myRoute) {
   document.getElementById('boardStopName').textContent = stationName;
   document.getElementById('myBusNo').value = myRoute || '';
   document.getElementById('locateResult').innerHTML = '';
+
+  // 브라우저가 백그라운드에서 페이지를 새로고침해도 마지막 보던 화면으로 돌아오게 저장
+  localStorage.setItem('lastStop', JSON.stringify({ stationId, stationName, myRoute: myRoute || '' }));
+
   loadArrivals();
   if (refreshTimer) clearInterval(refreshTimer);
   refreshTimer = setInterval(loadArrivals, 15000); // 15초마다 자동 갱신
 }
 
+// 화면이 꺼졌다 켜지거나, 다른 앱 갔다가 돌아왔을 때 바로 최신 정보로 갱신
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && currentStationId) {
+    loadArrivals();
+  }
+});
+
 function backToSearch() {
   if (refreshTimer) clearInterval(refreshTimer);
+  localStorage.removeItem('lastStop');
   document.getElementById('boardView').style.display = 'none';
   document.getElementById('searchView').style.display = 'block';
 }
 
-async function loadArrivals() {
+async function loadArrivals(retryCount = 0) {
   const bodyEl = document.getElementById('boardBody');
   try {
     const res = await fetch(`${PROXY_URL}?action=arrivals&stationId=${encodeURIComponent(currentStationId)}`);
@@ -464,6 +485,11 @@ async function loadArrivals() {
 
     renderBoard();
   } catch (e) {
+    if (retryCount < 2) {
+      // 네트워크 일시적 오류일 수 있으니 잠깐 후 재시도 (화면 켜자마자 등)
+      setTimeout(() => loadArrivals(retryCount + 1), 1500);
+      return;
+    }
     bodyEl.innerHTML = `<div class="error">오류: ${e.message}</div>`;
   }
 }
@@ -512,6 +538,14 @@ document.getElementById('keyword').addEventListener('keydown', e => {
 });
 
 renderFavorites();
+
+// 마지막으로 보고 있던 정류장이 있으면 검색화면 대신 바로 그 화면으로 복원
+try {
+  const last = JSON.parse(localStorage.getItem('lastStop') || 'null');
+  if (last && last.stationId) {
+    selectStop(last.stationId, last.stationName, last.myRoute);
+  }
+} catch {}
 
 // ============================================
 // 실시간 버스 위치 (정류소 기준)
